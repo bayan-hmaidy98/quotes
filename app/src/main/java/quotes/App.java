@@ -18,6 +18,7 @@ public class App {
 
 
     public static void main(String[] args) {
+        
         Gson gson = new Gson();
         File input = new File("app/src/main/resources/recentquotes.json");
         try {
