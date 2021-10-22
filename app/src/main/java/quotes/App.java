@@ -4,31 +4,109 @@ package quotes;/*
 //package app.src.main.java.quotes;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.Reader;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class App {
     public String getGreeting() {
         return "Hello World!";
     }
 
-
-
     public static void main(String[] args) {
+
+        String url = "https://favqs.com/api/qotd";
+        sendGetRequest(url);
+
+
+    }
+
+
+
+    static void sendGetRequest(String urlString){
         Gson gson = new Gson();
-        File input = new File("app/src/main/resources/recentquotes.json");
         try {
-            Reader reader = new FileReader(input);
-            Quotes []quotes = gson.fromJson(reader, Quotes[].class);
-            int min = 0;
-            int max = 142;
-            int random_int = (int)Math.floor(Math.random()*(max-min)+min);
-            System.out.println(quotes[random_int]);
-        } catch (FileNotFoundException e) {
+
+            // 1. connection part
+            URL url = new URL(urlString);
+            HttpURLConnection connection = setUpConnectionObject(url);
+            if(connection.getResponseCode() == 200){
+                BufferedReader input = getBufferedReaderFromConnection(connection);
+
+                // 2.2. get data from buffered reader
+                String line = input.readLine();
+                ApiQuotes apiQuotes = gson.fromJson(line, ApiQuotes.class);
+                System.out.println(apiQuotes);
+                addToGsonFile(apiQuotes);
+
+                input.close();
+            }
+
+            else{
+//                gson = new Gson();
+                File input = new File("app/src/main/resources/recentquotes.json");
+                try {
+                    Reader reader = new FileReader(input);
+                    Quotes []quotes = gson.fromJson(reader, Quotes[].class);
+                    int min = 0;
+                    int max = 142;
+                    System.out.println(quotes.length);
+                    int random_int = (int)Math.floor(Math.random()*(max-min)+min);
+                    System.out.println(quotes[random_int]);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    static HttpURLConnection setUpConnectionObject(URL url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
+        return connection;
+    }
+    static BufferedReader getBufferedReaderFromConnection(HttpURLConnection connection) throws IOException {
+        // 2.1. reader part
+        InputStream inputStream = connection.getInputStream();
+        InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+        BufferedReader input = new BufferedReader(inputStreamReader);
+        return input;
+    }
+
+    static void addToGsonFile(ApiQuotes apiQuotes) throws FileNotFoundException {
+//        JsonParser jsonParser = new JsonParser();
+
+        try {
+            Object obj = JsonParser.parseReader(new FileReader("app/src/main/resources/recentquotes.json"));
+            JsonArray jsonArray = (JsonArray) obj;
+
+//            System.out.println(jsonArray);
+
+            JsonObject quote1 = new JsonObject();
+//           quote1.add("author", apiQuotes.getAuthor());
+           quote1.addProperty("author", apiQuotes.getAuthor());
+           quote1.addProperty("body", apiQuotes.getBody());
+
+            jsonArray.add(quote1);
+//            System.out.println(jsonArray);
+
+            FileWriter file = new FileWriter("app/src/main/resources/recentquotes.json");
+            file.write(jsonArray.toString());
+            file.flush();
+            file.close();
+
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
+//
 }
